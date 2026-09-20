@@ -112,11 +112,14 @@ void CLoadData::OpenTexture(int Model, const wchar_t* SubFolder, int Wrap, int T
                 wchar_t szErrorMsg[256] = { 0, };
                 mu_swprintf(szErrorMsg, L"OpenTexture Failed: %ls of %hs", szFullPath, pModel->Name);
                 g_ErrorReport.Write(L"%ls (Model=%d)\r\n", szErrorMsg, Model);
-#ifdef FOR_WORK
-                PopUpErrorCheckMsgBox(szErrorMsg);
-#else // FOR_WORK
-                PopUpErrorCheckMsgBox(szErrorMsg, true);
-#endif // FOR_WORK
+
+                // TODO: restore the modal once the remaining texture gaps are closed.
+                // A handful of models reference textures that aren't shipped at the
+                // path they look in (Data/World74/ExtTile01-16.OZJ, the LuckyItem
+                // textures). Each miss used to open a blocking message box - and
+                // answering "No" tears down the client via ExitProcess - which makes
+                // the game unusable rather than merely missing a texture. The affected
+                // models simply render untextured, so log and carry on.
             }
         }
 
