@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ['*']
+    # '**' rather than '*': a single star does not match '/', so slashed
+    # branch names (feature/..., ci/...) were never push-triggered.
+    branches: ['**']
     paths-ignore:
       - 'src/bin/Data/**'
       - 'src/bin/fonts/**'
