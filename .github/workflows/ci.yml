@@ -8,6 +8,7 @@ on:
       - 'src/bin/fonts/**'
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -118,7 +119,11 @@ jobs:
 
   build-windows:
     name: Windows Native Build (x64, Release, editor OFF)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # The connectable Windows runtime (Main.exe + Native-AOT
+    # MUnique.Client.Library.dll) can only be produced on a Windows host, so this
+    # job is the sole source of it: it runs on every branch push and on manual
+    # dispatch, not just on main. Pull requests keep using the Linux/macOS jobs.
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest
 
     steps:
@@ -498,7 +503,9 @@ jobs:
 
   build-linux:
     name: Linux Native Build (x64, Release, editor OFF)
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'pull_request'
+      || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
 
     steps:
@@ -585,7 +592,9 @@ jobs:
 
   build-macos:
     name: macOS Native Build (arm64, Release, editor OFF)
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'pull_request'
+      || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: macos-latest
 
     steps:
