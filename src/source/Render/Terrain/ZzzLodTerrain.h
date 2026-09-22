@@ -67,7 +67,10 @@ void OpenTerrainLight(wchar_t* FileName);
 void SaveTerrainLight(wchar_t* FileName);
 
 // Frustum creation and testing (restored original implementations)
-void CreateFrustrum(float xAspect, float yAspect, vec3_t position);
+// CreateFrustrum builds the 3D cull pyramid (TestFrustrum) and, via
+// CreateFrustrum2D, the 2D ground hull (TestFrustrum2D). Viewport aspect is
+// read from the active camera and scene rather than passed in.
+void CreateFrustrum(vec3_t position);
 void CreateFrustrum2D(vec3_t Position);
 bool TestFrustrum(vec3_t Position, float Range);
 bool TestFrustrum2D(float x, float y, float Range);

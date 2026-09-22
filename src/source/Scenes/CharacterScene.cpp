@@ -258,11 +258,11 @@ static void SetupCharacterSceneViewport(int& outWidth, int& outHeight)
     {
         vec3_t cameraPos;
         VectorCopy(g_Camera.Position, cameraPos);
-        CreateFrustrum((float)outWidth / (float)REFERENCE_WIDTH,
-                       (float)outHeight / (float)REFERENCE_HEIGHT, cameraPos);
+        CreateFrustrum(cameraPos);
     }
 
-    CameraProjection::ScreenToWorldRay(g_Camera, MouseX, MouseY, MouseTarget);
+    const UI::Scaling::Position cursor = UI::Scaling::ActiveLogicalMouse();
+    CameraProjection::ScreenToWorldRay(g_Camera, cursor.x, cursor.y, MouseTarget);
 
     // Reset character positions and lighting
     for (int i = 0; i < MAX_CHARACTERS_PER_ACCOUNT; i++)

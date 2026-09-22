@@ -533,23 +533,34 @@ void OrbitalCamera::HandleInput()
     // Check if button is currently pressed (not just was pressed)
     bool buttonHeld = MouseMButton;
 
+    // Track the drag in unclamped reference-space floats rather than the global
+    // MouseX/MouseY. Middle-drag captures the cursor, so motion keeps arriving
+    // once it leaves the window -- but MouseX/MouseY are clamped to [0,640] /
+    // [0,480], which swallows that motion and stalls the rotation at the edge.
+    // Same transform the globals are derived from, so sensitivity is unchanged.
+    extern unsigned int WindowWidth, WindowHeight;
+    const auto dragTransform =
+        UI::Scaling::ScreenOverlayTransform(static_cast<int>(WindowWidth), static_cast<int>(WindowHeight));
+    const float dragMouseX = UI::Scaling::LogicalX(dragTransform, g_fWindowMouseX);
+    const float dragMouseY = UI::Scaling::LogicalY(dragTransform, g_fWindowMouseY);
+
     if (buttonHeld)
     {
         if (!m_Input.Rotating)
         {
             // Button just pressed - record starting position
             m_Input.Rotating = true;
-            m_Input.LastMouseX = MouseX;
-            m_Input.LastMouseY = MouseY;
+            m_Input.LastMouseX = dragMouseX;
+            m_Input.LastMouseY = dragMouseY;
         }
         else
         {
             // Button held - only rotate if mouse actually moved
-            int deltaX = MouseX - m_Input.LastMouseX;
-            int deltaY = MouseY - m_Input.LastMouseY;
+            float deltaX = dragMouseX - m_Input.LastMouseX;
+            float deltaY = dragMouseY - m_Input.LastMouseY;
 
             // Only apply rotation if there's actual mouse movement
-            if (deltaX != 0 || deltaY != 0)
+            if (deltaX != 0.0f || deltaY != 0.0f)
             {
                 const float sensitivity = 0.5f;
                 m_DeltaYaw += deltaX * sensitivity;
@@ -563,8 +574,8 @@ void OrbitalCamera::HandleInput()
                     m_DeltaPitch = MAX_PITCH - m_BasePitch;
 
                 // Update last position
-                m_Input.LastMouseX = MouseX;
-                m_Input.LastMouseY = MouseY;
+                m_Input.LastMouseX = dragMouseX;
+                m_Input.LastMouseY = dragMouseY;
             }
         }
     }

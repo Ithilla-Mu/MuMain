@@ -380,6 +380,12 @@ void UI::Scaling::SetActiveTransform(const Transform& transform)
     g_fTypographyScale = transform.typographyScale;
 }
 
+UI::Scaling::Position UI::Scaling::ActiveLogicalMouse()
+{
+    const Transform transform = GetActiveTransform();
+    return {LogicalX(transform, g_fWindowMouseX), LogicalY(transform, g_fWindowMouseY)};
+}
+
 UI::Scaling::ScopedActiveTransform::ScopedActiveTransform(const Transform& transform, bool transformMouse)
     : m_previousTransform(GetActiveTransform()),
       m_previousMouseX(MouseX),

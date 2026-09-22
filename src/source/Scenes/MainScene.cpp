@@ -370,8 +370,7 @@ static void SetupMainSceneViewport(int& outWidth, int& outHeight, BYTE& outByWat
     // All background colors are now centralized in SceneManager.cpp
 
     BeginOpenglPhysical(viewport.x, viewport.y, viewport.width, viewport.height);
-    CreateFrustrum(static_cast<float>(viewport.width) / WindowWidth,
-                   static_cast<float>(viewport.height) / WindowHeight, cameraPos);
+    CreateFrustrum(cameraPos);
 
     // Setup fog for battle castle
     if (gMapManager.InBattleCastle())
@@ -383,7 +382,8 @@ static void SetupMainSceneViewport(int& outWidth, int& outHeight, BYTE& outByWat
         }
         // Don't disable fog - let BeginOpengl() handle it based on FogEnable
     }
-    CameraProjection::ScreenToWorldRay(g_Camera, MouseX, MouseY, MouseTarget);
+    const UI::Scaling::Position cursor = UI::Scaling::ActiveLogicalMouse();
+    CameraProjection::ScreenToWorldRay(g_Camera, cursor.x, cursor.y, MouseTarget);
 }
 
 // DXP-23 diagnostic toggle -- see MainScene.h's SetDisableEffects() doc comment.

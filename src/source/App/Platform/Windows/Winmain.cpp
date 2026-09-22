@@ -1,6 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
+#include <cmath>
 #include "Core/Input/KeyState.h"
 #include "App/Platform/DiagnosticFrameCaptureSchedule.h"
 #include "App/Platform/DiagnosticFrameCaptureWriter.h"
@@ -947,6 +948,37 @@ bool RefreshWindowContentScale()
     return changed;
 }
 
+// Whole wheel notches consumed by the game; the sub-notch remainder is carried
+// here between events.
+//
+// SDL3 reports event.wheel.y as a float, and precision touchpads and
+// high-resolution wheels deliver fractions of a notch. Truncating each event to
+// int discards anything below 1.0, which kills zoom and every wheel-scrolled
+// list on that hardware. Accumulating instead keeps small movements and adds
+// them up into notches. Consumers zero MouseWheel when they act on it, so only
+// the remainder persists.
+float s_wheelRemainder = 0.0f;
+
+void AccumulateWheel(const SDL_MouseWheelEvent& wheel)
+{
+    // SDL does not pre-correct flipped (natural) scrolling; invert.
+    const float delta = (wheel.direction == SDL_MOUSEWHEEL_FLIPPED) ? -wheel.y : wheel.y;
+
+    // A direction reversal should respond immediately rather than first having
+    // to cancel out a remainder built up the other way.
+    if ((delta < 0.0f) != (s_wheelRemainder < 0.0f))
+        s_wheelRemainder = 0.0f;
+
+    s_wheelRemainder += delta;
+
+    const float notches = std::trunc(s_wheelRemainder);
+    if (notches == 0.0f)
+        return;
+
+    s_wheelRemainder -= notches;
+    MouseWheel += static_cast<int>(notches);
+}
+
 void HandleMouseMotion(float winX, float winY)
 {
     g_fWindowMouseX = winX;
@@ -1363,9 +1395,7 @@ MSG MainLoop()
                 HandleMouseButton(event);
                 break;
             case SDL_EVENT_MOUSE_WHEEL:
-                // SDL does not pre-correct flipped (natural) scrolling; invert.
-                MouseWheel = (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) ? -static_cast<int>(event.wheel.y)
-                                                                               : static_cast<int>(event.wheel.y);
+                AccumulateWheel(event.wheel);
                 break;
             case SDL_EVENT_WINDOW_RESIZED:
                 HandleWindowResize(event.window.data1, event.window.data2);

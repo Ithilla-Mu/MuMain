@@ -103,4 +103,13 @@ namespace UI::Scaling
     void SetWindowContentScale(float contentScale);
     Transform GetActiveTransform();
     void SetActiveTransform(const Transform& transform);
+
+    // Cursor position in logical units under the active transform, unrounded.
+    //
+    // The global MouseX/MouseY are ints in 640x480 reference space, so at any
+    // real resolution they quantise the cursor to a coarse grid (3 x 2.25 px at
+    // 1920x1080). Use this wherever the fractional position matters -- drawing
+    // the cursor, and building the world pick ray -- and keep MouseX/MouseY for
+    // UI hit testing, which is authored on the reference grid anyway.
+    Position ActiveLogicalMouse();
 }

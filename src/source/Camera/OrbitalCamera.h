@@ -113,8 +113,12 @@ private:
     struct InputState
     {
         bool Rotating = false;             // Middle mouse button held?
-        int LastMouseX = 0;
-        int LastMouseY = 0;
+        // Reference-space, but float and unclamped -- see HandleInput(). The
+        // global MouseX/MouseY are clamped to the window, so a drag that leaves
+        // the edge saturates and rotation stalls even though the capture is
+        // still delivering motion.
+        float LastMouseX = 0.0f;
+        float LastMouseY = 0.0f;
         float LastEffectivePitch = 0.0f;   // Last effective pitch applied (after constraints)
     } m_Input;
 
