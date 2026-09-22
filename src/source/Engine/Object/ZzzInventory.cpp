@@ -10056,7 +10056,7 @@ void RenderItem3D(float sx, float sy, float Width, float Height, int Type, int L
     }
 
     vec3_t Position;
-    CameraProjection::ScreenToWorldRay(g_Camera, (int)(sx), (int)(sy), Position, false);
+    CameraProjection::ScreenToWorldRay(g_Camera, sx, sy, Position, false);
     //RenderObjectScreen(Type+MODEL_ITEM,Level,Option1,Position,Success,PickUp);
     if (Type == ITEM_BOX_OF_LUCK && Level == 1)	// 성탄의별
     {

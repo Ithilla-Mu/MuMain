@@ -180,11 +180,11 @@ bool OpenJpegBuffer(wchar_t* filename, float* BufferFloat)
     auto compressedFile = _wfopen(fileName.c_str(), L"rb");
     if (compressedFile == nullptr)
     {
-        wchar_t Text[256];
-        mu_swprintf(Text, L"%ls - File not exist.", fileName.c_str());
         mu::log::Get("render")->error("{} - File not exist.", mu_wchar_to_utf8(fileName.c_str()));
-        MessageBox(g_hWnd, Text, NULL, MB_OK);
-        SendMessage(g_hWnd, WM_DESTROY, 0, 0);
+        // TODO: see /mnt/mu/TODO.md - restore the message box and the WM_DESTROY
+        // once the remaining texture gaps are closed. A missing texture used to
+        // tear the client down here, which turns a cosmetic problem into an
+        // unplayable one.
         return false;
     }
 
@@ -267,15 +267,9 @@ bool LoadBitmap(const wchar_t* szFileName, GLuint uiTextureIndex, GLuint uiFilte
     {
         if (false == Bitmaps.LoadImage(uiTextureIndex, szFullPath, uiFilter, uiWrapMode))
         {
-            wchar_t szErrorMsg[256] = {
-                0,
-            };
-            mu_swprintf(szErrorMsg, L"LoadBitmap Failed: %ls", szFullPath);
-#ifdef FOR_WORK
-            PopUpErrorCheckMsgBox(szErrorMsg);
-#else  // FOR_WORK
-            PopUpErrorCheckMsgBox(szErrorMsg, true);
-#endif // FOR_WORK
+            g_ErrorReport.Write(L"LoadBitmap Failed: %ls\r\n", szFullPath);
+            // TODO: see /mnt/mu/TODO.md - restore the message box once the
+            // remaining texture gaps are closed.
             return false;
         }
         return true;

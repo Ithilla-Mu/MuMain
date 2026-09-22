@@ -37,7 +37,16 @@ extern int  SelectModel;
 extern int  SelectMapping;
 extern bool DebugEnable;
 extern bool MouseOnWindow;
-extern int  MouseUpdateTime;
+// Move-repeat throttle: the client waits MouseUpdateTimeMax "throttle units"
+// after issuing a move before it accepts another click, so a held button can't
+// re-send a move for a path the hero is still walking. SendMove() scales the
+// max by path length; a UI interaction resets it to a flat value.
+//
+// A unit is one frame at THROTTLE_REFERENCE_FPS. MouseUpdateTime accumulates
+// real elapsed time converted into units, so the wait is the same wall-clock
+// duration at any framerate -- it used to count rendered frames, which made the
+// throttle six times shorter at 144 FPS than at 25.
+extern float MouseUpdateTime;
 extern int  MouseUpdateTimeMax;
 extern int  TalkNPC;
 extern int  SelectedItem;

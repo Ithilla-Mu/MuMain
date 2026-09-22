@@ -44,13 +44,18 @@ public:
      *
      * Replaces CreateScreenVector().
      *
+     * Takes float coordinates: the caller's cursor position is fractional in
+     * reference space, and rounding it to the integer MouseX/MouseY grid before
+     * building the ray snaps world picking to 3px at 1080p for no reason -- the
+     * function scales straight back up to window pixels on entry.
+     *
      * @param state Camera state with cached perspective factors
      * @param sx Screen X coordinate (in 640×480 reference coordinates)
      * @param sy Screen Y coordinate (in 640×480 reference coordinates)
      * @param outTarget Output world direction vector
      * @param bFixView Use camera view far (true) or item view far (false)
      */
-    static void ScreenToWorldRay(const CameraState& state, int sx, int sy,
+    static void ScreenToWorldRay(const CameraState& state, float sx, float sy,
                                   vec3_t outTarget, bool bFixView = true);
 
     /**

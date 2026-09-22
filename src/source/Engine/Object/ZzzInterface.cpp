@@ -98,8 +98,34 @@ DWORD g_dwLatestMagicTick;
 const   float   AutoMouseLimitTime = (1.f * 60.f * 60.f);
 int   LoadingWorld = 0;
 int   ItemHelp = 0;
-int   MouseUpdateTime = 0;
+float MouseUpdateTime = 0.f;
 int   MouseUpdateTimeMax = 6;
+
+// One throttle unit is one frame at this rate -- see ZzzInterface.h. The engine
+// elsewhere anchors frame-scaled behaviour at REFERENCE_FPS (25), but the move
+// throttle has been running against real framerates for long enough that 25
+// would make click-to-move feel markedly slower than players are used to. 60 is
+// a typical modern framerate, so it keeps the current feel while making the
+// wait independent of how fast the machine renders.
+constexpr double THROTTLE_REFERENCE_FPS = 60.0;
+
+// Cap on how much one frame may advance the throttle. Without it a single long
+// frame -- alt-tab, map load, a GC-style hitch -- would satisfy the whole wait
+// at once and let a held button fire a move the instant the game resumes.
+constexpr double MAX_THROTTLE_STEP_UNITS = 4.0;
+
+// How far this frame advances the move-repeat throttle.
+static float MouseUpdateStep()
+{
+    if (FPS <= 0.0)
+        return static_cast<float>(MAX_THROTTLE_STEP_UNITS);
+
+    // Explicit <double> is deliberate: windows.h defines a function-like min()
+    // macro, and bare std::min( would be expanded by the preprocessor before
+    // the compiler ever sees the qualified name. The angle bracket stops the
+    // expansion -- same reason the other calls in this file are std::min<int>.
+    return static_cast<float>(std::min<double>(THROTTLE_REFERENCE_FPS / FPS, MAX_THROTTLE_STEP_UNITS));
+}
 // Latched when a click opens an NPC conversation while the button is still held.
 // The world click handler ignores the held button until it is physically released, so the
 // same click can't fall through to ground movement and instantly close the NPC window.
@@ -3300,14 +3326,19 @@ void MoveHero()
                         }
                         else
                         {
-                            MouseUpdateTime = MouseUpdateTimeMax;
-                            MouseUpdateTime = 0;
+                            // Click landed on the tile we're already on, or
+                            // pathfinding found no route. No move was sent, so
+                            // there's nothing in flight to throttle against --
+                            // open the gate and let the player retry at once
+                            // rather than making them wait out a full path's
+                            // worth of throttle for a click that did nothing.
+                            MouseUpdateTime = static_cast<float>(MouseUpdateTimeMax);
                         }
                     }
                 }
             }
         }
-        MouseUpdateTime++;
+        MouseUpdateTime += MouseUpdateStep();
     }
 
     Attack(Hero);
@@ -3958,6 +3989,14 @@ void RenderCursor()
 
     EnableAlphaTest();
 
+    // Draw from the unrounded logical position, not MouseX/MouseY: those are
+    // ints on the 640x480 reference grid, which makes the cursor visibly snap
+    // in 3px steps at 1080p. The OS cursor is hidden, so this is the only
+    // cursor the player sees.
+    const UI::Scaling::Position cursor = UI::Scaling::ActiveLogicalMouse();
+    const float cursorX = cursor.x;
+    const float cursorY = cursor.y;
+
     float u = 0.f;
     float v = 0.f;
     int Frame = (int)(WorldTime * 0.01f) % 6;
@@ -3965,21 +4004,21 @@ void RenderCursor()
     if (Frame == 2 || Frame == 3 || Frame == 4) v = 0.5f;
     if (g_iKeyPadEnable || ErrorMessage)
     {
-        RenderBitmap(BITMAP_CURSOR, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+        RenderBitmap(BITMAP_CURSOR, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
     }
     else if (SelectedItem != -1)
     {
-        RenderBitmap(BITMAP_CURSOR + 3, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+        RenderBitmap(BITMAP_CURSOR + 3, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
     }
     else if (SelectedNpc != -1)
     {
         if (M38Kanturu2nd::Is_Kanturu2nd())
         {
-            RenderBitmap(BITMAP_CURSOR2, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_CURSOR2, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
         }
         else
         {
-            RenderBitmap(BITMAP_CURSOR + 4, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f, u, v, 0.5f, 0.5f);
+            RenderBitmap(BITMAP_CURSOR + 4, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f, u, v, 0.5f, 0.5f);
         }
     }
     else if (SelectedOperate != -1)
@@ -3989,9 +4028,9 @@ void RenderCursor()
             (gMapManager.WorldActive == WD_2DEVIAS && Operates[SelectedOperate].Owner->Type == 91) ||
             (gMapManager.WorldActive == WD_3NORIA && Operates[SelectedOperate].Owner->Type == 38)
             )
-            RenderBitmap(BITMAP_CURSOR + 6, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_CURSOR + 6, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
         else
-            RenderBitmap(BITMAP_CURSOR + 7, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_CURSOR + 7, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
     }
     else if ((!Hero->SafeZone/*||EnableEdit*/) && SelectedCharacter != -1)
     {
@@ -3999,29 +4038,29 @@ void RenderCursor()
         {
             if (gMapManager.InBattleCastle())
             {
-                RenderBitmap(BITMAP_CURSOR2, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+                RenderBitmap(BITMAP_CURSOR2, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
             }
             else
             {
-                RenderBitmap(BITMAP_CURSOR + 2, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+                RenderBitmap(BITMAP_CURSOR + 2, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
             }
         }
         else
-            RenderBitmap(BITMAP_CURSOR, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_CURSOR, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
     }
     else if (g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_COMMAND))
     {
         if (g_pCommandWindow->GetMouseCursor() == CURSOR_IDSELECT)
         {
-            RenderBitmap(BITMAP_INTERFACE_EX + 29, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_INTERFACE_EX + 29, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
         }
         else if (g_pCommandWindow->GetMouseCursor() == CURSOR_NORMAL)
         {
-            RenderBitmap(BITMAP_CURSOR, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_CURSOR, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
         }
         else if (g_pCommandWindow->GetMouseCursor() == CURSOR_PUSH)
         {
-            RenderBitmap(BITMAP_CURSOR + 1, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_CURSOR + 1, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
         }
     }
     else if (((g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_INVENTORY) || g_pNewUISystem->IsVisible(SEASON3B::INTERFACE_INVENTORY_EXT))
@@ -4032,34 +4071,34 @@ void RenderCursor()
     {
         if (MouseLButton == false)
         {
-            RenderBitmap(BITMAP_CURSOR + 5, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_CURSOR + 5, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
         }
         else
         {
-            RenderBitmapRotate(BITMAP_CURSOR + 5, (float)MouseX + 5.f, (float)MouseY + 18.f, 24.f, 24.f, 45.f);
+            RenderBitmapRotate(BITMAP_CURSOR + 5, cursorX + 5.f, cursorY + 18.f, 24.f, 24.f, 45.f);
         }
     }
     else if (RepairEnable == 2)
     {
         if (sin(WorldTime * 0.02f) > 0)
         {
-            RenderBitmapRotate(BITMAP_CURSOR + 5, (float)MouseX + 10.f, (float)MouseY + 10.f, 24.f, 24.f, 0.f);
+            RenderBitmapRotate(BITMAP_CURSOR + 5, cursorX + 10.f, cursorY + 10.f, 24.f, 24.f, 0.f);
         }
         else
         {
-            RenderBitmapRotate(BITMAP_CURSOR + 5, (float)MouseX + 5.f, (float)MouseY + 18.f, 24.f, 24.f, 45.f);
+            RenderBitmapRotate(BITMAP_CURSOR + 5, cursorX + 5.f, cursorY + 18.f, 24.f, 24.f, 45.f);
         }
     }
     else
     {
         if (!MouseLButton)
-            RenderBitmap(BITMAP_CURSOR, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+            RenderBitmap(BITMAP_CURSOR, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
         else
         {
             if (DontMove)
-                RenderBitmap(BITMAP_CURSOR + 8, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+                RenderBitmap(BITMAP_CURSOR + 8, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
             else
-                RenderBitmap(BITMAP_CURSOR + 1, (float)MouseX - 2.f, (float)MouseY - 2.f, 24.f, 24.f);
+                RenderBitmap(BITMAP_CURSOR + 1, cursorX - 2.f, cursorY - 2.f, 24.f, 24.f);
         }
     }
 }

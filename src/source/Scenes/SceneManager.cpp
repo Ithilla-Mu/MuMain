@@ -79,6 +79,14 @@ namespace
         MouseLButtonPush = false;
         MouseRButtonPush = false;
         MouseMButtonPush = false;
+        // Wheel notches are accumulated by AccumulateWheel() across every poll
+        // iteration, including the throttled ones that don't render, so nothing
+        // is lost while waiting for a frame. Retire them here rather than at
+        // poll time: this runs once per rendered frame, after scene logic has
+        // had its chance to read them. Consumers still zero MouseWheel to claim
+        // a notch and stop it reaching other widgets; this only makes sure an
+        // unclaimed notch can't leak into a later frame.
+        MouseWheel = 0;
         Core::Input::ClearLeftMouseButtonPressEdge();
     }
 }

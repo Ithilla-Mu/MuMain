@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <cfloat>
 #include "Core/Input/KeyState.h"
 #include "Input/Selection.h"
 #include "Character/CharacterManager.h" // gCharacterManager
@@ -73,22 +74,38 @@ int SelectItem()
     }
     float Luminosity = 1.5f;
 
+    // Nearest to the camera wins, not lowest array index. Drops pile up on a
+    // single tile after a boss kill; picking the first Items[] slot the ray
+    // crosses selects an arbitrary one that need not be the one drawn on top.
+    // Same rule SelectCharacter() already applies.
+    int iSelected = -1;
+    float fNearestDist = FLT_MAX;
     for (int i = 0; i < MAX_ITEMS; i++)
     {
         OBJECT* o = &Items[i].Object;
-        if (o->Live && o->Visible)
-        {
-            if (CollisionDetectLineToOBB(MousePosition, MouseTarget, o->OBB))
-            {
-                {
-                    o->LightEnable = false;
-                    Vector(Luminosity, Luminosity, Luminosity, o->Light);
-                    return i;
-                }
-            }
-        }
+        if (!o->Live || !o->Visible)
+            continue;
+
+        if (!CollisionDetectLineToOBB(MousePosition, MouseTarget, o->OBB))
+            continue;
+
+        vec3_t vSub;
+        VectorSubtract(o->Position, g_Camera.Position, vSub);
+        const float fNewDist = DotProduct(vSub, vSub);
+        if (fNewDist >= fNearestDist)
+            continue;
+
+        iSelected = i;
+        fNearestDist = fNewDist;
     }
-    return -1;
+
+    if (iSelected != -1)
+    {
+        OBJECT* o = &Items[iSelected].Object;
+        o->LightEnable = false;
+        Vector(Luminosity, Luminosity, Luminosity, o->Light);
+    }
+    return iSelected;
 }
 
 int SelectCharacter(BYTE Kind)
@@ -251,21 +268,35 @@ int SelectOperate()
     if (IsBattleCastleStart() && gMapManager.WorldActive == WD_30BATTLECASTLE)
         return -1;
 
+    // Nearest to the camera wins -- see SelectItem(). Operates (doors, levers,
+    // bookshelves) can overlap each other's pick boxes in dungeon interiors.
+    int iSelected = -1;
+    float fNearestDist = FLT_MAX;
     for (int i = 0; i < MAX_OPERATES; i++)
     {
         OPERATE* n = &Operates[i];
         OBJECT* o = n->Owner;
-        if (n->Live && o->Visible)
-        {
-            float* Light = &o->Light[0];
-            if (CollisionDetectLineToOBB(MousePosition, MouseTarget, o->OBB))
-            {
-                Vector(1.5f, 1.5f, 1.5f, Light);
-                return i;
-            }
-        }
+        if (!n->Live || !o->Visible)
+            continue;
+
+        if (!CollisionDetectLineToOBB(MousePosition, MouseTarget, o->OBB))
+            continue;
+
+        vec3_t vSub;
+        VectorSubtract(o->Position, g_Camera.Position, vSub);
+        const float fNewDist = DotProduct(vSub, vSub);
+        if (fNewDist >= fNearestDist)
+            continue;
+
+        iSelected = i;
+        fNearestDist = fNewDist;
     }
-    return -1;
+
+    if (iSelected != -1)
+    {
+        Vector(1.5f, 1.5f, 1.5f, &Operates[iSelected].Owner->Light[0]);
+    }
+    return iSelected;
 }
 
 void SelectObjects()

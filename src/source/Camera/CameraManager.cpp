@@ -37,7 +37,9 @@ void CameraManager::Initialize()
     m_pFreeFlyCamera = std::make_unique<FreeFlyCamera>(g_Camera);
 #endif
 
-    // Start with default camera
+    // Start with default camera. MainScene switches to Orbital itself,
+    // one frame after entering, once DefaultCamera has computed a sane
+    // position for Orbital to inherit (see Update()).
     m_pActiveCamera = m_pDefaultCamera.get();
     m_CurrentMode = CameraMode::Default;
     m_pActiveCamera->OnActivate(g_Camera);
@@ -68,18 +70,32 @@ bool CameraManager::Update()
     if (!m_pActiveCamera)
         return false;
 
+    extern EGameScene SceneFlag;
+
     // Auto-reset to DefaultCamera when leaving MainScene
     // Orbital camera is MainScene-only; if the scene changed, switch back
-    extern EGameScene SceneFlag;
     if (SceneFlag != MAIN_SCENE && m_CurrentMode != CameraMode::Default)
         SetCameraMode(CameraMode::Default);
+
+    // The frame MainScene is entered, DefaultCamera is still active and
+    // about to compute a fresh position from the character below. Switching
+    // to Orbital only AFTER that Update() lets OrbitalCamera::OnActivate
+    // inherit a sane pose; switching before would hand it whatever stale
+    // camera state the character-select screen left behind.
+    bool bJustEnteredMainScene = (SceneFlag == MAIN_SCENE && m_LastSceneFlag != MAIN_SCENE);
+    m_LastSceneFlag = (int)SceneFlag;
 
 #ifdef _EDITOR
     if (m_pSpectatedCamera && m_CurrentMode == CameraMode::FreeFly)
         UpdateSpectatedCamera();
 #endif
 
-    return m_pActiveCamera->Update();
+    bool bResult = m_pActiveCamera->Update();
+
+    if (bJustEnteredMainScene && m_CurrentMode == CameraMode::Default)
+        SetCameraMode(CameraMode::Orbital);
+
+    return bResult;
 }
 
 #ifdef _EDITOR

@@ -95,6 +95,11 @@ extern  short   g_shCameraLevel;
 
 static  float   g_fFrustumRange = -40.f;
 
+// The character-select and login scenes render the world into a short band at
+// the top of the reference screen rather than the full 480, so their projection
+// aspect differs from the main scene's. See ViewportAspect().
+constexpr int CHARACTER_SCENE_REFERENCE_HEIGHT = 430;
+
 void InitTerrainMappingLayer()
 {
     for (int i = 0; i < TERRAIN_SIZE * TERRAIN_SIZE; ++i)
@@ -1988,6 +1993,26 @@ static void BuildHull2DAndBounds(const float* ptsX, const float* ptsY, int numPt
     ComputeIterationBoundsFromHull();
 }
 
+// Width/height of the viewport gluPerspective is actually projecting into, as a
+// ratio. Both frustum builders need it: the 2D hull that culls terrain and
+// characters, and the 3D pyramid that culls items and effects.
+static float ViewportAspect()
+{
+    extern unsigned int WindowWidth, WindowHeight;
+    extern EGameScene SceneFlag;
+
+    if (SceneFlag == MAIN_SCENE)
+        return UI::Scaling::WorldViewportAspect(WindowWidth, WindowHeight, g_Camera.TopViewEnable);
+
+    const int refWidth = GetScreenWidth();
+    const int refHeight = (SceneFlag == CHARACTER_SCENE || SceneFlag == LOG_IN_SCENE)
+                              ? CHARACTER_SCENE_REFERENCE_HEIGHT
+                              : REFERENCE_HEIGHT;
+    const float viewportWidth = static_cast<float>(refWidth * WindowWidth) / REFERENCE_WIDTH;
+    const float viewportHeight = static_cast<float>(refHeight * WindowHeight) / REFERENCE_HEIGHT;
+    return viewportWidth / viewportHeight;
+}
+
 // Expand CW convex hull outward by `offset` tiles.
 // Compensates for TestFrustrum2D only checking tile centers — tiles at the hull
 // boundary whose centers are just outside would otherwise be culled even though
@@ -2110,24 +2135,7 @@ void CreateFrustrum2D(vec3_t Position)
             float vFovHalfRad = g_Camera.FOV * 0.5f * Q_PI / 180.0f;
             float tanHalf = tanf(vFovHalfRad);
 
-            // Viewport aspect ratio (matching BeginOpengl's calculation)
-            extern unsigned int WindowWidth, WindowHeight;
-            extern EGameScene SceneFlag;
-            float aspect = 0.0f;
-            if (SceneFlag == MAIN_SCENE)
-            {
-                aspect = UI::Scaling::WorldViewportAspect(WindowWidth, WindowHeight, g_Camera.TopViewEnable);
-            }
-            else
-            {
-                const int refWidth = GetScreenWidth();
-                const int refHeight = (SceneFlag == CHARACTER_SCENE || SceneFlag == LOG_IN_SCENE)
-                                          ? 430
-                                          : REFERENCE_HEIGHT;
-                const float viewportWidth = static_cast<float>(refWidth * WindowWidth) / REFERENCE_WIDTH;
-                const float viewportHeight = static_cast<float>(refHeight * WindowHeight) / REFERENCE_HEIGHT;
-                aspect = viewportWidth / viewportHeight;
-            }
+            const float aspect = ViewportAspect();
 
 #ifdef _EDITOR
             // DevEditor override: replace the view-cone pyramid with a user-defined
@@ -2303,12 +2311,24 @@ void CreateFrustrum2D(vec3_t Position)
 
 }
 
-void CreateFrustrum(float xAspect, float yAspect, vec3_t position)
+void CreateFrustrum(vec3_t position)
 {
+    // g_Camera.FOV is the VERTICAL fov (HFovToVFov feeds gluPerspective), so
+    // the far-plane half-height is tan(vFov/2) * Distance and the half-width is
+    // that times the viewport aspect. This used to take xAspect/yAspect scale
+    // factors, but both call sites passed 1.0 -- which made the cull pyramid
+    // square, i.e. only as wide as it was tall. On 16:9 that is 56% of the real
+    // horizontal extent, so items and effects toward the left and right edges
+    // sat outside a frustum the projection was still drawing them in.
+    //
+    // The 100-unit margin here and the Range slack callers pass to
+    // TestFrustrum() were large enough to hide this at default zoom; it opened
+    // up as the camera pulled back, because the slack is a fixed world-space
+    // distance and the gap it has to cover grows with range.
     const auto fovv = tanf(g_Camera.FOV * Q_PI / 360.f);
     float Distance = g_Camera.ViewFar;
-    float Width = fovv * Distance * xAspect + 100.f;
-    float Height = fovv * Distance * yAspect + 100.f;
+    float Width = fovv * Distance * ViewportAspect() + 100.f;
+    float Height = fovv * Distance + 100.f;
 
     vec3_t Temp[5];
     Vector(0.f, 0.f, 0.f, Temp[0]);

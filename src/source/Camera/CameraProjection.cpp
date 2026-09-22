@@ -47,20 +47,20 @@ void CameraProjection::SetViewport(int x, int y, int width, int height)
     mu::GetRenderer().SetScissor(x, y, width, height);
 }
 
-void CameraProjection::ScreenToWorldRay(const CameraState& state, int sx, int sy,
+void CameraProjection::ScreenToWorldRay(const CameraState& state, float sx, float sy,
                                          vec3_t outTarget, bool bFixView)
 {
     // Convert active logical coordinates to window pixels. World picking uses
     // the screen-overlay transform; panel item previews use the panel transform.
-    sx = static_cast<int>(static_cast<float>(sx) * g_fScreenRate_x + g_fScreenOffset_x);
-    sy = static_cast<int>(static_cast<float>(sy) * g_fScreenRate_y + g_fScreenOffset_y);
+    sx = sx * g_fScreenRate_x + g_fScreenOffset_x;
+    sy = sy * g_fScreenRate_y + g_fScreenOffset_y;
 
     vec3_t p1, p2;
 
     float farDist = bFixView ? state.ViewFar : RENDER_ITEMVIEW_FAR;
 
-    p1[0] = (float)(sx - state.ScreenCenterX) * farDist * state.PerspectiveX;
-    p1[1] = -(float)(sy - state.ScreenCenterY) * farDist * state.PerspectiveY;
+    p1[0] = (sx - (float)state.ScreenCenterX) * farDist * state.PerspectiveX;
+    p1[1] = -(sy - (float)state.ScreenCenterY) * farDist * state.PerspectiveY;
     p1[2] = -farDist;
 
     p2[0] = -state.Matrix[0][3];

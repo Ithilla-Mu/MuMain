@@ -58,8 +58,8 @@ public:
     /**
      * @brief Whether camera zoom (and orbital rotation) is locked.
      *
-     * F10 toggles this flag. It defaults to true so the camera doesn't
-     * react to the wheel until the player explicitly unlocks it.
+     * F10 toggles this flag. Defaults to false so the wheel zooms
+     * immediately without requiring the player to unlock it first.
      */
     bool IsZoomLocked() const { return m_ZoomLocked; }
 
@@ -87,7 +87,11 @@ private:
 
     CameraMode m_CurrentMode;
     ICamera* m_pActiveCamera;
-    bool m_ZoomLocked = true;  // F10 toggles; default = locked
+    bool m_ZoomLocked = false;  // F10 toggles; default = unlocked
+
+    // Tracks the scene seen on the previous Update() call, so we can detect
+    // the exact frame MainScene is entered (see Update()).
+    int m_LastSceneFlag = -1;
 
     // Camera instances
     std::unique_ptr<ICamera> m_pDefaultCamera;

@@ -784,9 +784,19 @@ void DefaultCamera::UpdateCameraDistance()
     // Disable distance smoothing for first 2 frames after activation to
     // prevent visible interpolation when switching from OrbitalCamera.
     if (m_FramesSinceActivation < 2)
+    {
         m_State.Distance = m_State.DistanceTarget;
-    else
-        m_State.Distance += (m_State.DistanceTarget - m_State.Distance) / 3;
+        return;
+    }
+
+    // Approach the target by a fixed fraction per REFERENCE_FPS frame, not per
+    // rendered frame. Unscaled, a wheel-zoom settled roughly five times faster
+    // at 144 FPS than at 30. FPS_ANIMATION_FACTOR is clamped to <= 1, so this
+    // stays stable below the reference rate instead of overshooting.
+    extern float FPS_ANIMATION_FACTOR;
+    constexpr float ZOOM_APPROACH_PER_REFERENCE_FRAME = 1.f / 3.f;
+    m_State.Distance += (m_State.DistanceTarget - m_State.Distance)
+                        * ZOOM_APPROACH_PER_REFERENCE_FRAME * FPS_ANIMATION_FACTOR;
 }
 
 void DefaultCamera::SetCameraFOV()
