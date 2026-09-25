@@ -479,7 +479,11 @@ void EmitRequirements(Model& m, const BuildOptions& options, int skillType)
         curCha = CharacterAttribute->Charisma + CharacterAttribute->AddCharisma;
     }
 
-    AddRequirementLine(m, SkillAttribute[skillType].Level, curLevel, GLOBAL_TEXT_REQUIRED_LEVEL);
+    // Level requirement is no longer enforced (see SkillManager.cpp,
+    // RebuildSkillAttributeRequirementsCache) - pass 0 so the line doesn't
+    // print at all, same as AddRequirementLine already does for any
+    // requirement that doesn't apply.
+    AddRequirementLine(m, 0, curLevel, GLOBAL_TEXT_REQUIRED_LEVEL);
     AddRequirementLine(m, SkillAttribute[skillType].Strength, curStr, GLOBAL_TEXT_REQUIRED_STRENGTH);
     AddRequirementLine(m, SkillAttribute[skillType].Dexterity, curDex, GLOBAL_TEXT_REQUIRED_DEXTERITY);
     AddRequirementLine(m, reqEnergy, curEnergy, GLOBAL_TEXT_REQUIRED_ENERGY);

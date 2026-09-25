@@ -13103,6 +13103,13 @@ namespace
             return KIND_TMP;
         }
 
+        // Dungeon Warden (elite content) reuses number 211, which the legacy
+        // classifier below would otherwise treat as an NPC.
+        if (rawType == 211)
+        {
+            return KIND_MONSTER;
+        }
+
         // Exception range that must stay monster even though values are > 200.
         if (rawType >= 480 && rawType <= 491)
         {

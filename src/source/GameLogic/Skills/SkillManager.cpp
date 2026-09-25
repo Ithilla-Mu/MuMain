@@ -283,7 +283,12 @@ void CSkillManager::RebuildSkillAttributeRequirementsCache()
         }
 
         DemendConditionInfo skillRequirements;
-        skillRequirements.SkillLevel = SkillAttribute[baseSkill].Level;
+        // Skill-use gate only, no longer enforced: server-side counterpart
+        // is custom/sql/039-skill-level-gate-removal.sql. BMD.Level itself
+        // stays untouched here (GetSkillInformation_Energy below still reads
+        // it to scale the Energy-cost formula) - only the comparison used to
+        // grey out / block the skill is bypassed.
+        skillRequirements.SkillLevel = 0;
         skillRequirements.SkillStrength = SkillAttribute[baseSkill].Strength;
         skillRequirements.SkillDexterity = SkillAttribute[baseSkill].Dexterity;
         skillRequirements.SkillVitality = 0;
